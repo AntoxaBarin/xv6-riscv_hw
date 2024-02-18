@@ -41,7 +41,7 @@ main() {
             exit(1);
         }   
     }
-    if ((j == 0) || (j == 1 && (number2[0] < '0' || number2[0] > '9'))) {
+    if ((j == 0) || (j == 1 && (number1[0] < '0' || number1[0] > '9'))) {
         write(2, "Wrong number of arguments!\n", WR_ARGS_NUM_ERR_LEN);
         exit(1);
     }   
