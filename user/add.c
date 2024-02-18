@@ -67,6 +67,10 @@ main() {
             exit(1);
         }   
     }
+    if ((j == 0) || (j == 1 && (number1[0] < '0' || number1[0] > '9'))) {
+        write(2, "Wrong number of arguments!\n", WR_ARGS_NUM_ERR_LEN);
+        exit(1);
+    }   
     number1[j] = '\0';
    
     j = 0;
@@ -90,7 +94,10 @@ main() {
         }
         number2[j++] = buf[i++];
     }
-    
+    if ((j == 0) || (j == 1 && (number2[0] < '0' || number2[0] > '9'))) {
+        write(2, "Wrong number of arguments!\n", WR_ARGS_NUM_ERR_LEN);
+        exit(1);
+    }       
     number2[j] = '\0';
 
     int int_number1 = atoi(number1);
