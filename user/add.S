@@ -111,8 +111,11 @@ check_fst_digit_snd_num:
     j error_incorrect_input            # else - incorrect number    
 
 error_incorrect_input:
-    la a0, error_ii                    # print error message
-    call printf
+    li a0, 2                           # stderr - file descriptror
+    la a1, error_ii                    # error message                             
+    li a2, 18                          # length of error message
+    li a7, 16                          # write system call
+    ecall                              # Syscall         
     
 exit:
     li a7, 2                           # Exit system call
