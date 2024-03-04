@@ -2,9 +2,6 @@
 #include "kernel/stat.h"
 #include "user/user.h"
 
-// 128 - max length of command in xv6
-#define BUF_LEN 128
-
 #define FORK_ERR_LEN 24
 #define EXEC_ERR_LEN 30
 
