@@ -4,11 +4,17 @@
 
 #define FORK_ERR_LEN 24
 #define EXEC_ERR_LEN 30
+#define PIPE_ERR_LEN 30
+#define WRT_PIPE_ERR_LEN 39
 
 int
 main(int argc, char* argv[]) {
     int p[2];
-    pipe(p);
+    
+    if (pipe(p) < 0) {
+        write(2, "Error: failed to create pipe!\n", PIPE_ERR_LEN);
+        exit(1);
+    }
     
     int pid = fork();
     if (pid < 0) { 
@@ -32,8 +38,14 @@ main(int argc, char* argv[]) {
     else {                      // parent process
         close(p[0]);            // p[0] --x--> pipe_read
         for (int i = 1; i < argc; i++) {
-            write(p[1], argv[i], strlen(argv[i]));
-            write(p[1], "\n", 1);
+            if (write(p[1], argv[i], strlen(argv[i])) < 0) {
+                write(2, "Error: failed to write into pipe!\n", WRT_PIPE_ERR_LEN);
+	            exit(1);
+            }
+            if (write(p[1], "\n", 1) < 0) {
+                write(2, "Error: failed to write into pipe!\n", WRT_PIPE_ERR_LEN);
+	            exit(1);
+            }
         } 
         
         close(p[1]);            // p[1] --x--> pipe_write
