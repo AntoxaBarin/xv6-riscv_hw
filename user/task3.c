@@ -33,18 +33,20 @@ main(int argc, char* argv[]) {
 
         // This code unreachable if exec() succeed
         write(2, "Error: failed to execute wc!\n", EXEC_ERR_LEN);
-	    exit(1);
+	      exit(1);
     } 
     else {                      // parent process
         close(p[0]);            // p[0] --x--> pipe_read
         for (int i = 1; i < argc; i++) {
             if (write(p[1], argv[i], strlen(argv[i])) < 0) {
                 write(2, "Error: failed to write into pipe!\n", WRT_PIPE_ERR_LEN);
-	            exit(1);
+                close(p[1]);
+	              exit(1);
             }
             if (write(p[1], "\n", 1) < 0) {
                 write(2, "Error: failed to write into pipe!\n", WRT_PIPE_ERR_LEN);
-	            exit(1);
+	              close(p[1]);
+                exit(1);
             }
         } 
         
