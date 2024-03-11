@@ -45,10 +45,12 @@ main(int argc, char* argv[]) {
         for (int i = 1; i < argc; i++) {
             if (write(p[1], argv[i], strlen(argv[i])) < 0) {
                 write(2, "Error: failed to write data into pipe!\n", WRT_PIPE_ERR_LEN);
+                close(p[1]); 
                 exit(1);
             }
             if (write(p[1], "\n", 1) < 0) {
                 write(2, "Error: failed to write data into pipe!\n", WRT_PIPE_ERR_LEN);
+                close(p[1]);   
                 exit(1);
             }
         }
