@@ -695,7 +695,10 @@ sys_ps_listinfo (void) {
   int counter = 0;
 
   if (!list_addr) {
-    lim = -1;
+    for (p = proc; p < &proc[NPROC]; p++) {
+      counter++;
+    }
+    return counter;
   }
 
   for (p = proc; p < &proc[NPROC]; p++) {
