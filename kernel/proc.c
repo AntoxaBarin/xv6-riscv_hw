@@ -5,6 +5,8 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+#include "sleeplock.h"
+#include "mutex.h"
 
 struct cpu cpus[NCPU];
 
@@ -25,6 +27,8 @@ extern char trampoline[]; // trampoline.S
 // memory model when using p->parent.
 // must be acquired before any p->lock.
 struct spinlock wait_lock;
+
+struct spinlock mutex_table_lock;
 
 // Allocate a page for each process's kernel stack.
 // Map it high in memory, followed by an invalid
@@ -55,6 +59,9 @@ procinit(void)
       initlock(&p->lock, "proc");
       p->state = UNUSED;
       p->kstack = KSTACK((int) (p - proc));
+      for (int i = 0; i < NOMUTEX; i++) {
+        p->omutex[i] = 0;
+      }
   }
 }
 
@@ -320,6 +327,16 @@ fork(void)
 
   acquire(&np->lock);
   np->state = RUNNABLE;
+
+  acquire(&mutex_table_lock);
+  for (i = 0; i < NOMUTEX; i++) {  // copy all mutexes
+    if (p->omutex[i] != 0) {
+      p->omutex[i]->descriptors_num += 1; 
+    }
+    np->omutex[i] = p->omutex[i];
+  }
+  release(&mutex_table_lock);
+  
   release(&np->lock);
 
   return pid;
@@ -359,6 +376,14 @@ exit(int status)
       p->ofile[fd] = 0;
     }
   }
+
+  acquire(&mutex_table_lock);
+  for (int i = 0; i < NOMUTEX; i++) {
+    if (p->omutex[i] != 0) {
+      p->omutex[i]->descriptors_num -= 1;
+    }
+  }
+  release(&mutex_table_lock);
 
   begin_op();
   iput(p->cwd);
