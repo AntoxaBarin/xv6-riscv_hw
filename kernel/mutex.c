@@ -96,16 +96,18 @@ mutex_destroy(int mutex_desc) {
         release(&mtable_lock);
         return -1; // nothing to destroy
     }
-
+    
     struct proc *p = myproc();
     for (int i = 0; i < NOMUTEX; i++) {
         if (p->omutex[i] == &mtable[mutex_desc]) {
             mtable[mutex_desc].descriptors_num -= 1;
-            
+
             release(&mtable_lock);
             p->omutex[i] = 0;
+
+            mutex_unlock(mutex_desc);
             return 0;     // successfully destroy mutex for proc p           
-        }    
+        }   
     } 
     release(&mtable_lock);
     return -2;    // no mutex in mutexes of proc p
