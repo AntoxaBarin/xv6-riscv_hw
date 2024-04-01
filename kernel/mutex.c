@@ -21,6 +21,7 @@ mutex_init(void) {
     acquire(&mtable_lock);                           // lock all table
     for (int i = 0 ; i < NMUTEX; i++) {
         mtable[i].descriptors_num = 0;
+        mtable[i].pid = -1;
         initsleeplock(&mtable[i].lock, "mutex sleeplock"); // init mutex sleeplock
     }
     release(&mtable_lock);
@@ -39,6 +40,7 @@ mutex_lock(int mutex_desc) {
     }
     release(&mtable_lock);
     acquiresleep(&mtable[mutex_desc].lock);
+    mtable[mutex_desc].pid = myproc()->pid;
     
     return 0;           // successfully locked mutex
 }
@@ -55,7 +57,11 @@ mutex_unlock(int mutex_desc) {
         return -2;      // mutex isn't used by any process
     }
     release(&mtable_lock);
-    releasesleep(&mtable[mutex_desc].lock);
+
+    if (mtable[mutex_desc].pid == myproc()->pid) { // if mutex locked by current proc
+        releasesleep(&mtable[mutex_desc].lock);
+        mtable[mutex_desc].pid = -1;
+    }
 
     return 0;           // successfully unlocked mutex
 }

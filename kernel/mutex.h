@@ -3,6 +3,7 @@
 
 struct mutex {
     int descriptors_num;
+    int pid;
     struct sleeplock lock;
 };
 
