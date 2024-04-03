@@ -381,6 +381,7 @@ exit(int status)
   for (int i = 0; i < NOMUTEX; i++) {
     if (p->omutex[i] != 0) {
       p->omutex[i]->descriptors_num -= 1;
+      p->omutex[i] = 0;
     }
   }
   release(&mutex_table_lock);
