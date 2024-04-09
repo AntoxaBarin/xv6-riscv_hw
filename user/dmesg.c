@@ -27,5 +27,6 @@ main() {
     
     char *head_ptr = &buffer[head];
     printf("%s", head_ptr);
+    free(buffer);
     exit(0);
 }
