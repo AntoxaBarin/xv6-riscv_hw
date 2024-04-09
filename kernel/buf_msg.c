@@ -74,7 +74,6 @@ write_ptr_into_buf_msg(uint64 ptr) {      // implementation from printf.c
 
 void 
 write_fmt_into_buf_msg(const char *fmt, va_list ap) {   // implementation from printf.c
-    printf("DEBUG: %s _ %s\n", fmt, "asdasd");
     int i, c;
     char *s;
 
@@ -148,12 +147,12 @@ sys_dmesg(void) {
     argaddr(0, &dst);
 
     if (buf_msg.tail > buf_msg.head) {  // [head ... tail]
-        if (copyout(myproc()->pagetable, dst, buf_msg.buffer + buf_msg.head, sizeof(char) * (buf_msg.tail - buf_msg.head)) < 0) {
+        if (copyout(myproc()->pagetable, dst, buf_msg.buffer, sizeof(char) * buf_msg.tail) < 0) {
             release(&buf_msg.lock);
             return -1;
         }
         // add '\0'
-        if (copyout(myproc()->pagetable, dst + sizeof(char) * (buf_msg.tail - buf_msg.head), null, sizeof(char)) < 0) {
+        if (copyout(myproc()->pagetable, dst + sizeof(char) * buf_msg.tail, null, sizeof(char)) < 0) {
             release(&buf_msg.lock);
             return -1;
         }
