@@ -27,7 +27,8 @@ main()
     binit();         // buffer cache
     iinit();         // inode table
     fileinit();      // file table
-    buf_msg_init();
+    buf_msg_init();  // initialize message buffer
+    prot_mng_init(); // initialize protocol manager
     virtio_disk_init(); // emulated hard disk
     userinit();      // first user process
     __sync_synchronize();

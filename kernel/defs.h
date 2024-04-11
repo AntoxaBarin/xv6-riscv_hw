@@ -9,6 +9,7 @@ struct sleeplock;
 struct stat;
 struct superblock;
 struct buf_msg;
+struct prot_mng;
 
 // bio.c
 void            binit(void);
@@ -189,6 +190,10 @@ void            virtio_disk_intr(void);
 //buf_msg.c
 void            buf_msg_init(void);
 void            pr_msg(const char *fmt, ...);
+
+//protocol_manager.c
+void            prot_mng_init(void);
+int             prot_check(int);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

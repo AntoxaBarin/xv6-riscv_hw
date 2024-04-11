@@ -6,6 +6,9 @@
 #include "proc.h"
 #include "defs.h"
 #include "elf.h"
+#include "protocol_manager.h"
+
+#define exec_event_code 3
 
 static int loadseg(pde_t *, uint64, struct inode *, uint, uint);
 
@@ -31,7 +34,10 @@ exec(char *path, char **argv)
   pagetable_t pagetable = 0, oldpagetable;
   struct proc *p = myproc();
 
-  pr_msg("Process %d execute %s", myproc()->pid, path);
+  if (!prot_check(exec_event_code)) {
+    pr_msg("Process %d execute %s", myproc()->pid, path);
+  }
+
   begin_op();
 
   if((ip = namei(path)) == 0){
