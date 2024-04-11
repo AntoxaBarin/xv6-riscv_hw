@@ -132,6 +132,34 @@ static uint64 (*syscalls[])(void) = {
 [SYS_protmng] sys_protmng,
 };
 
+#define syscall_event_code 0
+
+static char* syscall_names[] = {
+  "sys_fork",
+  "sys_exit",
+  "sys_wait",
+  "sys_pipe",
+  "sys_read",
+  "sys_kill",
+  "sys_exec",
+  "sys_fstat",
+  "sys_chdir",
+  "sys_dup",
+  "sys_getpid",
+  "sys_sbrk",
+  "sys_sleep",
+  "sys_uptime",
+  "sys_open",
+  "sys_write",
+  "sys_mknod",
+  "sys_unlink",
+  "sys_link",
+  "sys_mkdir",
+  "sys_close",
+  "sys_dmesg",
+  "sys_protmng"
+};
+
 void
 syscall(void)
 {
@@ -143,6 +171,11 @@ syscall(void)
     // Use num to lookup the system call function for num, call it,
     // and store its return value in p->trapframe->a0
     p->trapframe->a0 = syscalls[num]();
+
+    if (!prot_check(syscall_event_code)) {
+      pr_msg("[SYSCALL] Process %d call %s", p->pid, syscall_names[num]);
+    }
+
   } else {
     printf("%d %s: unknown sys call %d\n",
             p->pid, p->name, num);

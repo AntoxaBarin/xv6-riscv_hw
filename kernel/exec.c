@@ -35,7 +35,7 @@ exec(char *path, char **argv)
   struct proc *p = myproc();
 
   if (!prot_check(exec_event_code)) {
-    pr_msg("Process %d execute %s", myproc()->pid, path);
+    pr_msg("[EXEC] Process %d execute %s", myproc()->pid, path);
   }
 
   begin_op();

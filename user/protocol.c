@@ -13,7 +13,7 @@
 #define exec_event "4"
 
 #define turn_on_event "1"
-#define turn_off_event "1"
+#define turn_off_event "0"
 
 int
 main(int argc, char *argv[]) {
