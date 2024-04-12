@@ -190,7 +190,7 @@ devintr()
 
     if(irq == UART0_IRQ){
       if (!prot_check(intr_event_code)) {
-          pr_msg("[INTR] Interrupt number: %d, called by %s, caused by console input", irq, "UART");
+          pr_msg("[INTR] Interrupt number: %d, called by %s", irq, "UART");
         }
       uartintr();
     } else if(irq == VIRTIO0_IRQ){
