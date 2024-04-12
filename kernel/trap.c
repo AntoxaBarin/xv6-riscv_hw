@@ -169,6 +169,8 @@ clockintr()
   release(&tickslock);
 }
 
+#define intr_event_code 1
+
 // check if it's an external interrupt or software interrupt,
 // and handle it.
 // returns 2 if timer interrupt,
@@ -187,8 +189,14 @@ devintr()
     int irq = plic_claim();
 
     if(irq == UART0_IRQ){
+      if (!prot_check(intr_event_code)) {
+          pr_msg("[INTR] Interrupt number: %d, called by %s, caused by console input", irq, "UART");
+        }
       uartintr();
     } else if(irq == VIRTIO0_IRQ){
+      if (!prot_check(intr_event_code)) {
+         pr_msg("[INTR] Interrupt number: %d, called by %s", irq, "virtio");
+      }
       virtio_disk_intr();
     } else if(irq){
       printf("unexpected interrupt irq=%d\n", irq);
