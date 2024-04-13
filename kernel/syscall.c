@@ -172,8 +172,12 @@ syscall(void)
     // and store its return value in p->trapframe->a0
     p->trapframe->a0 = syscalls[num]();
 
+    acquire(&p->lock);
+    int pid = p->pid;
+    release(&p->lock);
+
     if (!prot_check(syscall_event_code)) {
-      pr_msg("[SYSCALL] Process %d call %s", p->pid, syscall_names[num]);
+      pr_msg("[SYSCALL] Process %d call %s", pid, syscall_names[num]);
     }
 
   } else {

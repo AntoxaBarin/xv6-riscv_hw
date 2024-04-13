@@ -2,7 +2,7 @@
 #include "kernel/param.h"
 #include "user/user.h"
 
-#define BUFFSIZE 2 * 4096 + 1
+#define BUFFSIZE 6 * 4096 + 1
 #define DMESG_ERR_LEN 32
 
 int
