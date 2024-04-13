@@ -434,6 +434,8 @@ wait(uint64 addr)
   }
 }
 
+#define swtch_event_code 2
+
 // Per-CPU process scheduler.
 // Each CPU calls scheduler() after setting itself up.
 // Scheduler never returns.  It loops, doing:
@@ -462,6 +464,9 @@ scheduler(void)
         c->proc = p;
         swtch(&c->context, &p->context);
 
+        if (!prot_check(swtch_event_code)) {
+          pr_msg("[SWTCH] New process pid: %d, name: %s", p->pid, p->name);
+        }
         // Process is done running for now.
         // It should have changed its p->state before coming back.
         c->proc = 0;
