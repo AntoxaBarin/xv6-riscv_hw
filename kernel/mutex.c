@@ -29,6 +29,9 @@ mutex_init(void) {
 
 int
 mutex_lock(int mutex_desc) {
+    if (mutex_desc < 0 || mutex_desc > NOMUTEX - 1) {
+        return -3;
+    }
     if (holdingsleep(&mtable[mutex_desc].lock)) {
         return -1;      // mutex already locked
     }
@@ -47,6 +50,10 @@ mutex_lock(int mutex_desc) {
 
 int
 mutex_unlock(int mutex_desc) {
+    if (mutex_desc < 0 || mutex_desc > NOMUTEX - 1) {
+        return -3;
+    }
+
     if (holdingsleep(&mtable[mutex_desc].lock) == 0) {
         return -1;      // mutex already unlocked
     }
@@ -85,7 +92,7 @@ mutex_create(void) {
         for (int i = 0; i < NOMUTEX; i++) {
             if (p->omutex[i] == 0) {
                 p->omutex[i] = &mtable[created_mutex_desc];
-                return created_mutex_desc;  
+                return i;  
             } 
         }
         return -1;     // too many mutexes per one proc
@@ -97,26 +104,21 @@ mutex_create(void) {
 
 int
 mutex_destroy(int mutex_desc) {
-    acquire(&mtable_lock);
-    if (mtable[mutex_desc].descriptors_num == 0) {
-        release(&mtable_lock);
-        return -1; // nothing to destroy
+    if (mutex_desc < 0 || mutex_desc > NOMUTEX - 1) {
+        return -2;
     }
     
     struct proc *p = myproc();
-    for (int i = 0; i < NOMUTEX; i++) {
-        if (p->omutex[i] == &mtable[mutex_desc]) {
-            mtable[mutex_desc].descriptors_num -= 1;
-
-            release(&mtable_lock);
-            p->omutex[i] = 0;
-
-            mutex_unlock(mutex_desc);
-            return 0;     // successfully destroy mutex for proc p           
-        }   
-    } 
+    if (p->omutex[mutex_desc] == 0) {
+        return -1; // nothing to destroy
+    }
+    
+    acquire(&mtable_lock);
+    p->omutex[mutex_desc]->descriptors_num -= 1;
     release(&mtable_lock);
-    return -2;    // no mutex in mutexes of proc p
+    
+    p->omutex[mutex_desc] = 0;
+    return 0;
 }
 
 
