@@ -117,9 +117,7 @@ write_fmt_into_buf_msg(const char *fmt, va_list ap) {   // implementation from p
 void pr_msg(const char *fmt, ...) {
     acquire(&buf_msg.lock);
 
-    acquire(&tickslock);
     int ticks_num = ticks;  // get ticks
-    release(&tickslock);
 
     va_list ap;
     va_start(ap, fmt);

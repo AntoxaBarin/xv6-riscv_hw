@@ -30,9 +30,7 @@ prot_check(int event_type) { // Check is it allowed to protocol
     if (prot_mng.last_tick == 0) {
         return (prot_mng.modes[event_type] == 1) ? 0 : -1;
     }
-    acquire(&tickslock);
     int cur_tick = ticks;
-    release(&tickslock);
     
     if (cur_tick <= prot_mng.last_tick) {
         return 0;
@@ -52,9 +50,7 @@ sys_protmng(void) {
         prot_mng.last_tick = 0;  // no limit in ticks
     }
     else if (ticks_ > 0) {
-        acquire(&tickslock);
         prot_mng.last_tick = ticks + ticks_; // ticks_ -- number of ticks we want to protocoling
-        release(&tickslock);
     }
 
     prot_mng.modes[event_type - 1] = turn_on;
