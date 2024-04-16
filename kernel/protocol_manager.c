@@ -17,8 +17,8 @@ void
 prot_mng_init() {
     // Turn on all events
     prot_mng.modes[0] = 1;
-    prot_mng.modes[1] = 0;
-    prot_mng.modes[2] = 0;
+    prot_mng.modes[1] = 1;
+    prot_mng.modes[2] = 1;
     prot_mng.modes[3] = 1;
 
     // No tick limit
