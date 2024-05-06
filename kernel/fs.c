@@ -416,6 +416,52 @@ bmap(struct inode *ip, uint bn)
     brelse(bp);
     return addr;
   }
+  bn -= NINDIRECT;
+
+  if (bn < NDOUBLY_INDIRECT) {
+    // Load double indirect block
+    addr = ip->addrs[NDIRECT+1];
+    if (addr == 0) {
+      addr = balloc(ip->dev);
+      if (addr == 0) {
+        return 0;
+      }
+      ip->addrs[NDIRECT + 1] = addr;
+    }
+    struct buf* bp = bread(ip->dev, addr);
+    a = (uint*)bp->data;
+    
+    // Load single indirect block
+    uint indirect_block_num = bn / NINDIRECT;
+    addr = a[indirect_block_num];
+    if (addr == 0) {
+      addr = balloc(ip->dev);
+      if (addr) {
+        a[indirect_block_num] = addr;
+        log_write(bp);
+      }
+    }
+    brelse(bp);
+    if (addr == 0) {
+      return 0;
+    }
+
+    // Find disk block
+    uint block_pos = bn % NINDIRECT;
+    struct buf* sbp = bread(ip->dev, addr);
+    a = (uint*)sbp->data;
+    addr = a[block_pos];
+    if (addr == 0) {
+      addr = balloc(ip->dev);
+      if (addr) {
+        a[block_pos] = addr;
+        log_write(sbp);
+      }
+    }
+    brelse(sbp);
+    return addr;
+  }
+
 
   panic("bmap: out of range");
 }
