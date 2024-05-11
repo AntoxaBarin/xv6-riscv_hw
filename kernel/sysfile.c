@@ -258,6 +258,8 @@ create(char *path, short type, short major, short minor)
     ilock(ip);
     if(type == T_FILE && (ip->type == T_FILE || ip->type == T_DEVICE))
       return ip;
+    if (type == T_SYMLINK) 
+      return ip;
     iunlockput(ip);
     return 0;
   }
@@ -368,6 +370,63 @@ sys_open(void)
   end_op();
 
   return fd;
+}
+
+uint64
+sys_symlink(void) {
+    struct inode *ip;    
+    char target[MAXPATH];
+    char filename[MAXPATH];
+    
+    if (argstr(0, target, MAXPATH) < 0 || argstr(1, filename, MAXPATH) < 0) {
+        return -1;
+    }
+
+    begin_op();
+    if ((ip = create(filename, T_SYMLINK, 0, 0)) == 0) {
+      end_op();
+      return -1;
+    }
+
+    if (writei(ip, 0, (uint64)target, 0, strlen(target) - 1) < strlen(target) - 1) {
+      return -1;
+      end_op();
+    }
+    iunlockput(ip);
+    end_op();
+    return 0;
+}
+
+uint64
+sys_readlink(void) {
+    struct inode* ip;
+    struct file* file;
+    char filename[MAXPATH];    
+    char *buffer;
+    uint64 buf_addr;
+
+    if (argstr(0, filename, MAXPATH) < 0) {
+      return -1;
+    } 
+    argaddr(1, &buf_addr);
+    buffer = (char*)buf_addr;
+    
+    begin_op();
+    if ((ip = namei(filename)) == 0) {
+      end_op();
+      return -1;
+    }
+    ilock(ip);
+    
+    if((file = filealloc()) == 0){
+      iunlockput(ip);
+      end_op();
+      return -1;
+    }
+    fileread(file, (uint64)buffer, ip->size);
+    iunlock(ip);
+    end_op();
+    return 0;
 }
 
 uint64
