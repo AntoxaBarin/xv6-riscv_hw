@@ -5,6 +5,7 @@
 
 #define BUFSIZE 128
 #define DEPTH_LIMIT_EXIT_CODE -10
+#define NOT_EXIST_FILE_CODE -20
 
 // Just calls sys_symlink
 int create_link(const char *filename, const char *target, const char *test_num) {
@@ -336,20 +337,23 @@ int test_7() {
 
 /* Ссылка на себя (бесконечная рекурсия) */
 int test_8() {
-    const char *abs_s1 = "/dir/sl_8";
+    const char* abs_s1 = "/dir/sl8";
     const char *test_num = "8";
     
     if (create_link(abs_s1, abs_s1, test_num) != 0) {
-        return -3;
+        fprintf(2, "Test 8-2. Failed to create directories.\n");
+		return -3;
 	}
     if (open(abs_s1, O_RDONLY) != DEPTH_LIMIT_EXIT_CODE) {
-        unlink(abs_s1);
+        fprintf(2, "Test 8-3. Failed to create directories.\n");
+		unlink(abs_s1);
 		return -4;
 	}
 
     unlink(abs_s1);
 	fprintf(2, "Test 8. Success.\n");
     return 0;
+
 }
 
 /* Косвенная ссылка на себя (бесконечная рекурсия через 2-3 перехода) */
@@ -416,6 +420,190 @@ int test_9() {
     #undef unlink_all
 }
 
+/* Абсолютная ссылка на несуществующий файл */
+int test_10() {	
+	const char* abs_file = "/dir/dir10_2/dir10_3/f9";
+	const char* abs_s1 = "/dir/dir10_2/sl9";
+	const char* data = "FileData10";
+	const char* test_num = "10";
+    #define unlink_paths unlink("dir/dir10_2/dir10_3"); unlink("dir/dir10_2");
+
+    int prep = mkdir("dir/dir10_2") | mkdir("dir/dir10_2/dir10_3");
+    if (prep != 0) {
+        fprintf(2, "Test 10. Failed to create directories.\n");
+        unlink_paths
+        return -1;
+    } 
+	if (create_file(abs_file, data, test_num) != 0) {
+		unlink_paths
+		return -2;
+	}
+	if (create_link(abs_file, abs_s1, test_num) != 0) {
+		unlink(abs_s1);
+		unlink_paths
+		return -3;
+	}
+	unlink(abs_file);
+	if (open(abs_s1, O_RDONLY) != NOT_EXIST_FILE_CODE) {
+		fprintf(2, "Test %s. Failed.\n", test_num);
+		unlink(abs_s1);
+		unlink_paths
+		return -5;
+	}
+	
+	unlink(abs_s1);
+	unlink_paths
+	fprintf(2, "Test %s. Success.\n", test_num);
+	return 0;
+
+    #undef unlink_paths
+}
+
+/* Относительная ссылка на несуществующий файл того же каталога 
+   (при этом файл существует в каталоге на 2-3 уровня выше или ниже) */
+int test_11() {
+	const char* abs_file = "/dir/t112/t113/f10";
+	const char* file = "t112/t113/f10";
+	const char* abs_file2 = "/dir/f10";
+	const char* as1 = "/dir/l101";
+	const char* data = "FileData11";
+	const char* testname = "11";
+
+    #define unlink_paths unlink("dir/t112/t112"); unlink("dir/t112");
+    #define unlink_all unlink(abs_file); unlink(abs_file2);
+
+    int prep = mkdir("dir/t112") | mkdir("dir/t112/t113");
+    if (prep != 0) {
+        fprintf(2, "Test %s. Failed to create directories.\n", testname);
+		unlink_paths
+        return -1;
+    } 
+	if (create_file(abs_file, data, testname) != 0) {
+		unlink_paths
+		return -2;
+	}
+	if (create_file(abs_file2, data, testname) != 0) {
+		unlink_paths
+		return -2;
+	}
+	if (create_link(file, as1, testname) != 0) {
+		unlink_all
+		unlink_paths
+		return -3;
+	}
+	unlink(abs_file);
+	if (open(as1, O_RDONLY) != NOT_EXIST_FILE_CODE) {
+		fprintf(2, "Test %s. Failed.\n", testname);
+		unlink(as1);
+		unlink_paths
+		return -5;
+	}
+	
+	unlink_all
+	unlink_paths
+	fprintf(2, "Test 11. Success.\n");
+	return 0;
+
+    #undef unlink_paths
+    #undef unlink_all
+}
+
+/* Относительная ссылка на несуществующий файл каталога
+   на 2-3 уровня выше (при этом файл в том же каталоге существует) */
+int test_12() {
+	const char* afp1 = "/dir/t122/t123/f121";
+	const char* afp2 = "/dir/f121";
+	const char* fp2 = "f121";
+	const char* as1 = "/dir/l121";
+	const char* data = "FileData12";
+	const char* test_num = "12";
+    #define unlink_paths unlink("dir/t122/t123"); unlink("dir/t122");
+    #define unlink_all unlink(afp1); unlink(afp2);
+
+    int prep = mkdir("dir/t122") | mkdir("dir/t122/t123");
+    if (prep != 0) {
+        fprintf(2, "Test\t%s. Failed to create directories.\n", test_num);
+		unlink_paths
+        return -1;
+    } 
+	if (create_file(afp1, data, test_num) != 0) {
+		unlink_paths
+		return -2;
+	}
+	if (create_file(afp2, data, test_num) != 0) {
+		unlink_paths
+		return -2;
+	}
+	if (create_link(fp2, as1, test_num) != 0) {
+		unlink_all
+		unlink_paths
+		return -3;
+	}
+	unlink(afp2);
+	if (open(as1, O_RDONLY) != NOT_EXIST_FILE_CODE) {
+		fprintf(2, "Test %s. Failed.\n", test_num);
+		unlink(as1);
+		unlink_paths
+		return -5;
+	}
+	
+	unlink_all
+	unlink_paths
+	fprintf(2, "Test %s. Success.\n", test_num);
+	return 0;
+
+    #undef unlink_paths
+    #undef unlink_all
+}
+
+/* Относительная ссылка на несуществующий файл каталога
+	на 2-3 уровня ниже (при этом файл в том же каталоге существует) */
+int test_13() {
+	const char* afp1 = "/dir/t132/t133/f121";
+	const char* afp2 = "/dir/f121";
+	const char* fp2 = "../../f121";
+	const char* as1 = "/dir/t132/t133/l121";
+	const char* data = "FuleData13";
+	const char* test_num = "12";
+    #define unlink_paths unlink("dir/t132/t133"); unlink("dir/t132");
+    #define unlink_all unlink(afp1); unlink(afp2);
+
+    int prep = mkdir("dir/t132") | mkdir("dir/t132/t133");
+    if (prep != 0) {
+        fprintf(2, "Test %s. Failed to create directories.\n", test_num);
+		unlink_paths
+        return -1;
+    } 
+	if (create_file(afp1, data, test_num) != 0) {
+		unlink_paths
+		return -2;
+	}
+	if (create_file(afp2, data, test_num) != 0) {
+		unlink_paths
+		return -2;
+	}
+	if (create_link(fp2, as1, test_num) != 0) {
+		unlink_all
+		unlink_paths
+		return -3;
+	}
+	unlink(afp2);
+	if (open(as1, O_RDONLY) != NOT_EXIST_FILE_CODE) {
+		fprintf(2, "Test %s. Failed.\n", test_num);
+		unlink(as1);
+		unlink_paths
+		return -5;
+	}
+	
+    unlink_all
+	unlink_paths
+	fprintf(2, "Test 13. Success.\n");
+	return 0;
+
+    #undef unlink_paths
+    #undef unlink_all
+
+}
 
 int main() {
     if (mkdir("dir")) {
@@ -433,6 +621,10 @@ int main() {
     test_res_sum += test_7();
     test_res_sum += test_8();
     test_res_sum += test_9();
+    test_res_sum += test_10();
+    test_res_sum += test_11();
+    test_res_sum += test_12();
+    test_res_sum += test_13();
 	
     unlink("dir");
 

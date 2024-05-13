@@ -370,7 +370,7 @@ sys_open(void)
             }
             if((ip = namei(path)) == 0){
                 end_op();
-                return -3;
+                return -20;
             }
             ilock(ip);
         }
