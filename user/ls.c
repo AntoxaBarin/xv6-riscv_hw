@@ -2,6 +2,8 @@
 #include "kernel/stat.h"
 #include "user/user.h"
 #include "kernel/fs.h"
+#include "kernel/param.h"
+#include "kernel/fcntl.h"
 
 char*
 fmtname(char *path)
@@ -30,7 +32,7 @@ ls(char *path)
   struct dirent de;
   struct stat st;
 
-  if((fd = open(path, 0)) < 0){
+  if((fd = open(path, O_NOFOLLOW)) < 0){
     fprintf(2, "ls: cannot open %s\n", path);
     return;
   }
@@ -41,8 +43,23 @@ ls(char *path)
     return;
   }
 
+  int readlink_res;
+  char link_buf[MAXPATH];
+
   switch(st.type){
   case T_DEVICE:
+  case T_SYMLINK:
+    if ((readlink_res = readlink(path, link_buf)) < 0) {
+      printf("%s %d %d %l --> unknown target\n", fmtname(path), st.type, st.ino, st.size);
+    }
+    else {
+      if (readlink_res < MAXPATH) {
+        buf[readlink_res] = '\0';
+        printf("%s %d %d %l --> %s\n", fmtname(path), st.type, st.ino, st.size, link_buf);
+      }
+    }
+    break;
+
   case T_FILE:
     printf("%s %d %d %l\n", fmtname(path), st.type, st.ino, st.size);
     break;
@@ -60,11 +77,25 @@ ls(char *path)
         continue;
       memmove(p, de.name, DIRSIZ);
       p[DIRSIZ] = 0;
-      if(stat(buf, &st) < 0){
+      if(lstat(buf, &st) < 0){
         printf("ls: cannot stat %s\n", buf);
         continue;
       }
-      printf("%s %d %d %d\n", fmtname(buf), st.type, st.ino, st.size);
+      if (st.type != T_SYMLINK) {
+        printf("%s %d %d %d\n", fmtname(buf), st.type, st.ino, st.size);
+      }
+      // Show link's target
+      else {  
+        if ((readlink_res = readlink(path, link_buf)) < 0) {
+          printf("%s %d %d %l --> unknown target\n", fmtname(path), st.type, st.ino, st.size);
+        }
+        else {
+          if (readlink_res < MAXPATH) {
+            buf[readlink_res] = '\0';
+            printf("%s %d %d %l --> %s\n", fmtname(path), st.type, st.ino, st.size, link_buf);
+          }
+        }
+      }   
     }
     break;
   }

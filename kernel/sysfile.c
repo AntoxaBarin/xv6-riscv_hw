@@ -256,6 +256,8 @@ create(char *path, short type, short major, short minor)
   if((ip = dirlookup(dp, name, 0)) != 0){
     iunlockput(dp);
     ilock(ip);
+    if (type == T_SYMLINK) 
+      return ip;
     if(type == T_FILE && (ip->type == T_FILE || ip->type == T_DEVICE))
       return ip;
     iunlockput(ip);
@@ -324,11 +326,56 @@ sys_open(void)
     }
   } else {
     if((ip = namei(path)) == 0){
-      end_op();
-      return -1;
+        end_op();
+        return -1;
     }
     ilock(ip);
-    if(ip->type == T_DIR && omode != O_RDONLY){
+    if (!(omode & O_NOFOLLOW)) {
+        int depth = SLDEPTH; 
+        int path_len = strlen(path);
+        
+        while (ip->type == T_SYMLINK) { // Recursively go to the target
+            depth -= 1;
+            if (depth < 0) {            // Recursion limit
+                iunlock(ip);
+                end_op();
+                return -2;
+            }
+            char target_path[MAXPATH];  
+            memset(target_path, 0, MAXPATH);
+            if (readi(ip, 0, (uint64)target_path, 0, MAXPATH) < 0) {   // Read target
+                iunlock(ip);
+                end_op();
+                return -1;
+            }
+            iunlock(ip);
+            if (target_path[0] == '/') {                   // Absolute path
+                safestrcpy(path, target_path, MAXPATH);
+                path_len = strlen(path);
+            } else {                                       // Relative path
+                for (; path_len > 0; path_len--) {    // Erase path to nearest '/'
+                    if (path[path_len - 1] == '/') {
+                        break;
+                    }
+                }
+                if ((path_len + strlen(target_path) + 1) > MAXPATH) {  // Too long path
+                    end_op();
+                    return -1;
+                }
+                // Copy relative target path to the end of absolute path
+                for (int i = 0; i < MAXPATH && target_path[i]; ++i) {  
+                    path[path_len++] = target_path[i];
+                }
+                path[path_len] = 0;
+            }
+            if((ip = namei(path)) == 0){
+                end_op();
+                return -3;
+            }
+            ilock(ip);
+        }
+    }
+    if(ip->type == T_DIR && omode != O_RDONLY && omode != O_NOFOLLOW){
       iunlockput(ip);
       end_op();
       return -1;
@@ -502,4 +549,93 @@ sys_pipe(void)
     return -1;
   }
   return 0;
+}
+
+uint64
+sys_symlink(void) {
+  char target[MAXPATH], filename[MAXPATH];
+	argstr(0, target, MAXPATH);
+	argstr(1, filename, MAXPATH);
+	char name[DIRSIZ];
+	struct inode *ip1;
+
+  if (argstr(0, target, MAXPATH) < 0 || argstr(1, filename, MAXPATH) < 0) {
+    return -1;
+  }
+
+	begin_op();
+	if ((ip1 = nameiparent(filename, name)) == 0) {   // Bad filename
+		end_op();
+    return -1;
+  }
+	
+  ilock(ip1);
+  struct inode* ip2 = ialloc(ip1->dev, T_SYMLINK);
+  if (ip2 == 0) {                                  // Bad allocation
+    iunlockput(ip1);
+    end_op();
+    return -1;
+  }
+  ilock(ip2);
+  ip2->nlink += 1;
+  iupdate(ip2);
+
+	if (dirlink(ip1, name, ip2->inum) < 0) {         
+		iunlockput(ip1);
+    ip2->nlink -= 1;
+    iupdate(ip2);
+
+    iunlockput(ip2);
+		end_op();
+    return -1;
+	}
+  int target_len = strlen(target);
+  if (writei(ip2, 0, (uint64)target, 0, target_len) < target_len) {  // Bad write
+    iunlockput(ip1);
+    ip2->nlink -= 1;
+    iupdate(ip2);
+
+    iunlockput(ip2);
+    end_op();
+    return -1;
+  }
+	iunlockput(ip1);
+	iunlockput(ip2);
+	end_op();
+  
+	return 0;
+}
+
+uint64 
+sys_readlink(void) {
+  char filename[MAXPATH];
+	uint64 buf_addr;
+
+  if (argstr(0, filename, MAXPATH) < 0) {
+    return -1;
+  } 
+  argaddr(1, &buf_addr);
+
+  begin_op();
+	struct inode *ip = namei(filename);
+	if (ip == 0) {
+		end_op();
+    return -1;
+  }
+	ilock(ip);
+  int read_res = readi(ip, 1, (uint64)buf_addr, 0, ip->size);
+  if (read_res < 0) {
+    iunlockput(ip);
+    end_op();
+    return -1;
+  }
+  if (copyout(myproc()->pagetable, (uint64)buf_addr + read_res, "", 1) < 0) {
+    iunlockput(ip);
+    end_op();
+    return -1;
+  }
+	iunlockput(ip);
+	end_op();
+
+	return read_res + 1;
 }
