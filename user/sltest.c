@@ -4,6 +4,7 @@
 #include "user/user.h"
 
 #define BUFSIZE 128
+#define DEPTH_LIMIT_EXIT_CODE -10
 
 // Just calls sys_symlink
 int create_link(const char *filename, const char *target, const char *test_num) {
@@ -190,7 +191,7 @@ int test_5() {
 
 	unlink_all
 	unlink_paths
-	fprintf(2, "Test %s. Success.\n", "5");
+	fprintf(2, "Test 5. Success.\n");
 	return 0;
 
     #undef unlink_all
@@ -257,12 +258,164 @@ int test_6() {
 
 	unlink_all
 	unlink_paths
-	fprintf(2, "Test %s. Success.\n", test_num);
+	fprintf(2, "Test 6. Success.\n");
 	return 0;
 
     #undef unlink_all
     #undef unlink_paths
 }
+
+/* Корректная относительная ссылка на относительную символическую ссылку 
+   (глубина рекурсии 2-3, конечная цель - существующий файл). */
+int test_7() {
+	const char* file = "f7";
+	const char* abs_file = "/dir/dir7_2/f7";
+	const char* abs_s1 = "/dir/dir7_2/sl7_1";
+	const char* s1 = "dir7_2/sl7_1";
+	const char* abs_s2 = "/dir/sl7_2";
+	const char* s2 = "../../sl7_2";
+	const char* abs_s3 = "/dir/dir7_2/dir7_3/sl7_3";
+	const char* data = "FileData7";
+	const char* test_num = "7";
+    #define unlink_paths unlink("dir/dir7_2/dir7_3"); unlink("dir/dir7_2");
+    #define unlink_all unlink(abs_file); unlink(abs_s1); unlink(abs_s2); unlink(abs_s3);
+
+    int prep = mkdir("dir/dir7_2") | mkdir("dir/dir7_2/dir7_3");
+    if (prep != 0) {
+        fprintf(2, "Test 7. Failed to create directories.\n");
+		unlink_paths
+        return -1;
+    } 
+	if (create_file(abs_file, data, test_num) != 0) {
+		unlink_paths
+		return -2;
+	}
+	if (create_link(file, abs_s1, test_num) != 0) {
+		unlink(abs_file);
+		unlink_paths
+		return -3;
+	}
+	if (create_link(s1, abs_s2, test_num) != 0) {
+		unlink(abs_file);
+		unlink(abs_s1);
+		unlink_paths
+		return -3;
+	}
+	if (create_link(s2, abs_s3, test_num) != 0) {
+		unlink(abs_file);
+		unlink(abs_s1);
+		unlink(abs_s2);
+		unlink_paths
+		return -3;
+	}
+	if (check_link_content(abs_s3, data, test_num) != 0) {
+		unlink_all
+		unlink_paths
+		return -4;
+	}
+	if (check_link_content(abs_s2, data, test_num) != 0) {
+		unlink_all
+		unlink_paths
+		return -4;
+	}
+	if (check_link_content(abs_s1, data, test_num) != 0) {
+		unlink_all
+		unlink_paths
+		return -4;
+	}
+
+	unlink_all
+	unlink_paths
+	fprintf(2, "Test 7. Success.\n");
+	return 0;
+
+    #undef unlink_paths
+    #undef unlink_all
+
+}
+
+/* Ссылка на себя (бесконечная рекурсия) */
+int test_8() {
+    const char *abs_s1 = "/dir/sl_8";
+    const char *test_num = "8";
+    
+    if (create_link(abs_s1, abs_s1, test_num) != 0) {
+        return -3;
+	}
+    if (open(abs_s1, O_RDONLY) != DEPTH_LIMIT_EXIT_CODE) {
+        unlink(abs_s1);
+		return -4;
+	}
+
+    unlink(abs_s1);
+	fprintf(2, "Test 8. Success.\n");
+    return 0;
+}
+
+/* Косвенная ссылка на себя (бесконечная рекурсия через 2-3 перехода) */
+int test_9() {
+	const char* abs_s1 = "/dir/dir9_2/sl9_1";
+	const char* abs_s2 = "/dir/sl9_2";
+	const char* abs_s3 = "/dir/dir9_2/dir9_3/sl9_3";
+	const char* data = "FileData9";
+	const char* test_num = "9";
+    #define unlink_paths unlink("dir/dir9_2/dir9_3"); unlink("dir/dir9_2");
+    #define unlink_all unlink(abs_s1); unlink(abs_s2); unlink(abs_s3);
+
+
+    int prep = mkdir("dir/dir9_2") | mkdir("dir/dir9_2/dir9_3");
+    if (prep != 0) {
+        fprintf(2, "Test 9. Failed to create directories.\n");
+		unlink_paths
+        return -1;
+    } 
+	if (create_file(abs_s1, data, test_num) != 0) {
+		unlink_paths
+		return -2;
+	}
+	if (create_link(abs_s1, abs_s2, test_num) != 0) {
+		unlink(abs_s1);
+		unlink_paths
+		return -3;
+	}
+	if (create_link(abs_s2, abs_s3, test_num) != 0) {
+		unlink(abs_s1);
+		unlink(abs_s2);
+		unlink_paths
+		return -3;
+	}
+	unlink(abs_s1);
+	if (create_link(abs_s3, abs_s1, test_num) != 0) {
+		unlink(abs_s2);
+		unlink(abs_s3);
+		unlink_paths
+		return -3;
+	}
+	if (open(abs_s1, O_RDONLY) != DEPTH_LIMIT_EXIT_CODE) {
+		unlink_all
+		unlink_paths
+		return -5;
+	}
+	if (open(abs_s2, O_RDONLY) != DEPTH_LIMIT_EXIT_CODE) {
+		unlink_all
+		unlink_paths
+		return -5;
+	}
+	if (open(abs_s3, O_RDONLY) != DEPTH_LIMIT_EXIT_CODE) {
+		unlink_all
+		unlink_paths
+		return -5;
+	}
+
+	unlink_all
+	unlink_paths
+	fprintf(2, "Test 9. Success.\n");
+	return 0;
+
+    #undef unlink_paths
+    #undef unlink_all
+}
+
 
 int main() {
     if (mkdir("dir")) {
@@ -277,6 +430,9 @@ int main() {
 	test_res_sum += test_4();
     test_res_sum += test_5();
     test_res_sum += test_6();
+    test_res_sum += test_7();
+    test_res_sum += test_8();
+    test_res_sum += test_9();
 	
     unlink("dir");
 

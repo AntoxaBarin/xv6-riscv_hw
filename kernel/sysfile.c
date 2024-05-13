@@ -339,7 +339,7 @@ sys_open(void)
             if (depth < 0) {            // Recursion limit
                 iunlock(ip);
                 end_op();
-                return -2;
+                return -10;
             }
             char target_path[MAXPATH];  
             memset(target_path, 0, MAXPATH);
