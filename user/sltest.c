@@ -132,6 +132,138 @@ int test_4() {
 	return test_res;
 }
 
+/* Корректная абсолютная ссылка на абсолютную символическую
+	ссылку (глубина рекурсии 2-3, конечная цель - существующий файл). */
+int test_5() {
+	const char* file = "/dir/dir5_2/dir5_3/f5";
+	const char* sl1 = "/dir/dir5_2/sl5_1" ;
+	const char* sl2 = "/dir/dir5_2/dir5_3/sl5_2" ;
+	const char* sl3 = "/dir/sl5_3";
+	const char* data = "FileData5";
+    const char *test_num = "5";
+    #define unlink_all unlink(file); unlink(sl1); unlink(sl2); unlink(sl3);
+    #define unlink_paths unlink("dir/dir5_2/dir5_3"); unlink("dir/dir5_2");
+
+    int prep = mkdir("dir/dir5_2") | mkdir("dir/dir5_2/dir5_3");
+    if (prep != 0) {
+        fprintf(2, "Test 5. Failed to create directories.\n");
+		unlink_paths
+        return -1;
+    } 
+	if (create_file(file, data, test_num) != 0) {
+		unlink_paths
+		return -2;
+	}
+	if (create_link(file, sl1, test_num) != 0) {
+		unlink(file);
+		unlink_paths
+		return -3;
+	}
+	if (create_link(sl1, sl2, test_num) != 0) {
+		unlink(file);
+		unlink(sl1);
+		unlink_paths
+		return -3;
+	}
+	if (create_link(sl2, sl3, test_num) != 0) {
+		unlink(file);
+		unlink(sl1);
+		unlink(sl2);
+		unlink_paths
+		return -3;
+	}
+	if (check_link_content(sl3, data, test_num) != 0) {
+        unlink_all
+		unlink_paths
+		return -4;
+	}
+	if (check_link_content(sl2, data, test_num) != 0) {
+		unlink_all
+		unlink_paths
+		return -4;
+	}
+	if (check_link_content(sl1, data, test_num) != 0) {
+		unlink_all
+		unlink_paths
+		return -4;
+	}
+
+	unlink_all
+	unlink_paths
+	fprintf(2, "Test %s. Success.\n", "5");
+	return 0;
+
+    #undef unlink_all
+    #undef unlink_paths
+}
+
+/* Корректная абсолютная ссылка на относительную символическую ссылку 
+   (глубина рекурсии 2-3, конечная цель - существующий файл). */
+int test_6() {
+	const char* file = "dir6_3/f6";
+	const char* abs_file = "/dir/dir6_2/dir6_3/f6";
+	const char* sl1 = "/dir/dir6_2/sl6_1";
+	const char* sl2 = "dir6_2/dir6_3/sl6_2";
+	const char* abs_s2 = "/dir/dir6_2/dir6_3/sl6_2";
+	const char* sl3 = "/dir/sl6_3";
+	const char* data = "FileData6";
+	const char* test_num = "6";
+    #define unlink_all unlink(abs_file); unlink(sl1); unlink(abs_s2); unlink(sl3);
+    #define unlink_paths unlink("dir/dir6_2/dir6_3"); unlink("dir/dir6_2");
+
+    int prep = mkdir("dir/dir6_2") | mkdir("dir/dir6_2/dir6_3");
+    if (prep != 0) {
+        fprintf(2, "Test 6. Failed to create directories.\n");
+		unlink_paths
+        return -1;
+    } 
+	if (create_file(abs_file, data, test_num) != 0) {
+		unlink_paths
+		return -2;
+	}
+	if (create_link(file, sl1, test_num) != 0) {
+		unlink(abs_file);
+		unlink_paths
+		return -3;
+	}
+	if (create_link(sl1, abs_s2, test_num) != 0) {
+		unlink(abs_file);
+		unlink(sl1);
+		unlink_paths
+		return -3;
+	}
+	if (create_link(sl2, sl3, test_num) != 0) {
+		unlink(abs_file);
+		unlink(sl1);
+		unlink(abs_s2);
+		unlink_paths
+		return -3;
+	}
+	if (check_link_content(sl3, data, test_num) != 0) {
+		unlink_all
+		unlink_paths
+		return -4;
+	}
+	if (check_link_content(abs_s2, data, test_num) != 0) {
+		unlink_all
+		unlink_paths
+		return -4;
+	}
+	if (check_link_content(sl1, data, test_num) != 0) {
+		unlink_all
+		unlink_paths
+		return -4;
+	}
+
+	unlink_all
+	unlink_paths
+	fprintf(2, "Test %s. Success.\n", test_num);
+	return 0;
+
+    #undef unlink_all
+    #undef unlink_paths
+}
+
 int main() {
     if (mkdir("dir")) {
         fprintf(2, "Failed to create directory dir for testing.\n");
@@ -143,6 +275,8 @@ int main() {
 	test_res_sum += test_2();
 	test_res_sum += test_3();
 	test_res_sum += test_4();
+    test_res_sum += test_5();
+    test_res_sum += test_6();
 	
     unlink("dir");
 
