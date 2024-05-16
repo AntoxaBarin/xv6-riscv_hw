@@ -89,3 +89,38 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+
+uint64
+sys_pgaccess(void) {
+  uint64 page_addr;
+  int size; 
+  int npages;
+  uint64 res_addr; 
+
+  argaddr(0, &page_addr);
+  argint(1, &size);
+  argaddr(2, &res_addr);
+
+  npages = (size + PGSIZE - 1) / PGSIZE;
+  pagetable_t cur_pt = myproc()->pagetable;
+
+  int result = 0;
+  for (int i = 0; i < npages; ++i) {
+    pte_t *pte = walk(cur_pt, page_addr, 0);
+    // Check null attribute
+    if (*pte & PTE_A) {
+
+      // Erase null attribute
+      (*pte) &= ~PTE_A;
+      result = 1;
+    }
+
+    page_addr += PGSIZE;
+  }
+
+  if (copyout(cur_pt, res_addr, (char *)&result, sizeof(result)) < 0) {
+    return -1;
+  }
+  return 0;
+}
